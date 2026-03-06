@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Cache-Control" content="no-cache" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>AiKaid丨Life is actually very interesting</title>
+    <meta name="description" content="AquaInkGL,WishMeLz,WishMeLz-home,Life is actually very interesting。" />
+    <meta name="keywords" content="AquaInkGL,WishMeLz,Life is actually very interesting,wish,webgl" />
+    <meta property="og:url" content="https://github.com/WishMelz/AquaInkGL/" />
+
+    <script type="text/javascript" src="assets/dat.gui.min.js"></script>
+    <style>
+        * {
+            user-select: none;
+        }
+
+        html,
+        body {
+            overflow: hidden;
+            background-color: #000;
+        }
+
+        body {
+            margin: 0;
+            position: fixed;
+            width: 100%;
+            height: 100%;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .wrap {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            top: 0;
+            color: #fff;
+            pointer-events: none;
+            text-align: center;
+            mix-blend-mode: difference;
+        }
+
+        .main {
+            position: absolute;
+            top: 25%;
+            left: 0;
+            right: 0;
+            animation: float-drift 8s ease-in-out infinite;
+        }
+
+        h1 {
+            font-family: 'Comfortaa', cursive;
+            font-weight: 700;
+            font-size: 8.5em;
+            margin: 0;
+            letter-spacing: -2px;
+            /* Pull elements closer to look cohesive */
+            text-align: center;
+
+            /* Liquid Gradient Shimmer */
+            background: linear-gradient(-45deg,
+                    rgba(255, 255, 255, 0.8) 0%,
+                    rgba(255, 255, 255, 1) 30%,
+                    rgba(150, 220, 255, 0.9) 50%,
+                    rgba(255, 255, 255, 1) 70%,
+                    rgba(255, 255, 255, 0.8) 100%);
+            background-size: 200% auto;
+            color: transparent;
+            -webkit-background-clip: text;
+            background-clip: text;
+
+            /* Drop shadow works better with gradient text than text-shadow */
+            filter: drop-shadow(0 0 15px rgba(100, 200, 255, 0.3));
+            animation: liquid-shimmer 6s ease-in-out infinite alternate;
+        }
+
+        h2 {
+            color: rgba(255, 255, 255, 0.6);
+            text-align: center;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 300;
+            font-size: 1.5em;
+            letter-spacing: 8px;
+            margin-top: 15px;
+            margin-bottom: 0px;
+            text-transform: lowercase;
+        }
+
+        footer {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            padding: 20px;
+        }
+
+        footer a {
+            pointer-events: auto;
+            color: #fff;
+        }
+
+        footer span {
+            font-size: 12px;
+        }
+
+        @keyframes liquid-shimmer {
+            0% {
+                background-position: 0% center;
+            }
+
+            100% {
+                background-position: 200% center;
+            }
+        }
+
+        @keyframes float-drift {
+            0% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-15px);
+            }
+
+            100% {
+                transform: translateY(0px);
+            }
+        }
+
+        @media screen and (max-width: 767px) {
+            h1 {
+                font-size: 4.5rem;
+            }
+
+            h2 {
+                font-size: 1.2rem;
+                letter-spacing: 2px;
+            }
+        }
+
+        .project-links {
+            display: flex;
+            gap: 1.5rem;
+            justify-content: center;
+            margin-top: 0.8rem;
+            flex-wrap: wrap;
+        }
+
+        .project-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            font-size: 0.85rem;
+            padding: 0.4rem 0.8rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .project-link:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .project-link .icon {
+            font-size: 1rem;
+        }
+
+        .project-divider {
+            width: 100%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            margin: 0.8rem 0;
+        }
+
+        @media (max-width: 640px) {
+            .project-links {
+                gap: 0.8rem;
+            }
+            
+            .project-link {
+                font-size: 0.75rem;
+                padding: 0.3rem 0.6rem;
+            }
+        }
+
+        .site-footer {
+            padding: 0.8rem 1.5rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .footer-content {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+        }
+
+        .icp-link:hover {
+            transform: translateY(-1px);
+        }
+
+        .icp-link {
+            display: inline-flex;
+            transition: all 0.2s ease;
+            font-size: 11px;
+        }
+
+        .divider {
+            user-select: none;
+            opacity: 0.5;
+        }
+
+        .project-links {
+            display: flex;
+            gap: 0.8rem;
+            justify-content: center;
+            margin-bottom: 0.6rem;
+            flex-wrap: wrap;
+        }
+
+        .project-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            color: rgba(255, 255, 255, 0.6);
+            text-decoration: none;
+            font-size: 10px;
+            padding: 0.3rem 0.6rem;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .project-link:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .project-link .icon {
+            font-size: 0.8rem;
+        }
+
+        .project-divider {
+            width: 100%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            margin: 0.5rem 0;
+        }
+
+        @media (max-width: 640px) {
+            .footer-content {
+                flex-wrap: wrap;
+                gap: 0.5rem;
+                justify-content: center;
+            }
+
+            .divider {
+                display: none;
+            }
+
+            .project-links {
+                gap: 0.5rem;
+            }
+            
+            .project-link {
+                font-size: 9px;
+                padding: 0.25rem 0.5rem;
+            }
+        }
+    </style>
+    <script>
+        window.ga = window.ga || function () { };
+    </script>
+</head>
+
+<body>
+    <canvas></canvas>
+    <div class="wrap">
+        <div class="main">
+            <h1>AiKaid</h1>
+            <h2>Life is actually very interesting</h2>
+        </div>
+
+        <footer class="site-footer">
+            
+            <div class="project-links">
+                <a href="https://emoji.io724.com" target="_blank" rel="noopener noreferrer" class="project-link">
+                    <span class="icon">🎨</span>
+                    <span>表情包切图</span>
+                </a>
+                <a href="https://resume.io724.com" target="_blank" rel="noopener noreferrer" class="project-link">
+                    <span class="icon">📄</span>
+                    <span>简历分析</span>
+                </a>
+                <a href="https://tv.io724.fun" target="_blank" rel="noopener noreferrer" class="project-link">
+                    <span class="icon">🎬</span>
+                    <span>影视站</span>
+                </a>
+            </div>
+            <div class="project-divider"></div>
+            <div class="footer-content">
+                <span class="brand">
+                    ©
+                    <time id="year" datetime="2025">2025</time>
+                    AiKaid
+                </span>
+
+                <span class="divider" aria-hidden="true">│</span>
+
+                <span class="powered-by">Powered by ITSSE.CN</span>
+
+                <span class="divider" aria-hidden="true">│</span>
+
+                <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer" class="icp-link">
+                    鄂ICP备2026009648号
+                </a>
+            </div>
+            
+        </footer>
+    </div>
+    <script src="assets/script.js"></script>
+</body>
+<script>
+    const y = document.getElementById("year");
+    if (y) {
+        const now = new Date().getFullYear();
+        y.textContent = now;
+        y.setAttribute("datetime", String(now));
+    }
+</script>
+
+</html>
