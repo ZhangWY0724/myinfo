@@ -39,15 +39,53 @@
         }
         :focus-visible { outline: 2px solid #245cbb; outline-offset: 3px; }
         .result {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
             margin-top: 1rem;
             padding: 0.85rem 1rem;
             background: #f0f4fb;
             border-radius: 0.65rem;
         }
-        .row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem; }
-        #code { font: 700 clamp(1.4rem, 7vw, 2.2rem)/1.4 ui-monospace, monospace; letter-spacing: 0.06em; }
-        button { padding: 0.4rem 0.8rem; border: 0; background: #204fa0; color: white; cursor: pointer; }
-        button:disabled { background: #d9e1ee; color: #505e74; cursor: default; }
+        #code {
+            padding: 0.1rem 0;
+            border: 0;
+            background: transparent;
+            color: #204fa0;
+            font: 700 clamp(1.25rem, 6vw, 2.2rem)/1.4 ui-monospace, monospace;
+            letter-spacing: 0.06em;
+            cursor: copy;
+            transition: transform 120ms ease, color 120ms ease, background-color 120ms ease;
+        }
+        #code:enabled:hover { color: #163877; }
+        #code:enabled:active { transform: scale(0.94); }
+        #code.copied:enabled { color: #17643c; background: #dff3e8; }
+        #code:disabled { color: #505e74; cursor: default; }
+        @media (prefers-reduced-motion: reduce) {
+            #code { transition: none; }
+            #code:enabled:active { transform: none; background: #d9e1ee; }
+        }
+        .timer {
+            --progress: 0%;
+            display: grid;
+            place-items: center;
+            flex: 0 0 3.25rem;
+            aspect-ratio: 1;
+            border-radius: 50%;
+            background: conic-gradient(#204fa0 var(--progress), #d9e1ee 0);
+        }
+        #remaining {
+            display: grid;
+            place-items: center;
+            width: calc(100% - 0.4rem);
+            aspect-ratio: 1;
+            border-radius: 50%;
+            background: #f0f4fb;
+            color: #505e74;
+            font: 600 0.8rem/1 system-ui, sans-serif;
+            font-variant-numeric: tabular-nums;
+        }
         #status { min-height: 1.6em; }
     </style>
 </head>
@@ -60,11 +98,8 @@
         <input id="secret" type="password" placeholder="粘贴 Base32 密钥或 otpauth 链接"
             autocomplete="off" spellcheck="false" autocapitalize="off">
         <div class="result">
-            <div class="row">
-                <span id="code" aria-label="当前验证码">—</span>
-                <button id="copy" type="button" disabled>复制验证码</button>
-            </div>
-            <p id="remaining" class="hint">输入密钥后自动生成</p>
+            <button id="code" type="button" title="点击验证码复制" aria-label="等待生成验证码" disabled>—</button>
+            <div id="timer" class="timer"><span id="remaining" role="timer">—</span></div>
         </div>
         <p id="status" class="hint" role="status"></p>
     </main>
@@ -74,12 +109,18 @@
 
         const input = document.querySelector('#secret');
         const code = document.querySelector('#code');
-        const copy = document.querySelector('#copy');
+        const timer = document.querySelector('#timer');
         const remaining = document.querySelector('#remaining');
         const status = document.querySelector('#status');
         const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
         const hashes = new Map([['SHA1', 'SHA-1'], ['SHA256', 'SHA-256'], ['SHA512', 'SHA-512']]);
         let current = null;
+        let copiedTimeout;
+
+        function clearCopyFeedback() {
+            clearTimeout(copiedTimeout);
+            code.classList.remove('copied');
+        }
 
         function decodeBase32(value) {
             const normalized = value.replace(/\s/g, '').toUpperCase();
@@ -140,19 +181,25 @@
             const state = current;
             if (!state) return;
 
-            const step = timeStep(state.period);
-            remaining.textContent = '剩余 ' + (state.period - Math.floor(Date.now() / 1000) % state.period) + ' 秒';
+            const seconds = Date.now() / 1000;
+            const step = Math.floor(seconds / state.period);
+            const left = state.period - seconds % state.period;
+            remaining.textContent = Math.ceil(left) + ' 秒';
+            timer.style.setProperty('--progress', (left / state.period * 100) + '%');
             if (state.step === step) return;
 
             state.step = step;
+            clearCopyFeedback();
             code.textContent = '—';
-            copy.disabled = true;
+            code.disabled = true;
+            code.setAttribute('aria-label', '等待生成验证码');
             status.textContent = '';
             try {
                 const value = await generate(await state.key, step, state.digits);
                 if (current !== state || timeStep(state.period) !== step) return;
                 code.textContent = value;
-                copy.disabled = false;
+                code.setAttribute('aria-label', '复制验证码 ' + value);
+                code.disabled = false;
             } catch {
                 if (current === state) status.textContent = '无法生成验证码，请确认浏览器支持 Web Crypto。';
             }
@@ -160,10 +207,13 @@
 
         function update() {
             current = null;
+            clearCopyFeedback();
             code.textContent = '—';
-            copy.disabled = true;
+            code.disabled = true;
+            code.setAttribute('aria-label', '等待生成验证码');
             status.textContent = '';
-            remaining.textContent = '输入密钥后自动生成';
+            remaining.textContent = '—';
+            timer.style.removeProperty('--progress');
             const value = input.value.trim();
             if (!value) return;
             if (!globalThis.crypto?.subtle) {
@@ -181,16 +231,24 @@
         }
 
         input.addEventListener('input', update);
-        copy.addEventListener('click', async () => {
+        code.addEventListener('click', async () => {
             const state = current;
-            await refresh();
-            if (copy.disabled || current !== state || state.step !== timeStep(state.period)) return;
+            if (!state || code.disabled) return;
+            const step = state.step;
+            if (step !== timeStep(state.period)) {
+                void refresh();
+                return;
+            }
             const value = code.textContent;
             try {
                 await navigator.clipboard.writeText(value);
-                if (current === state && code.textContent === value) status.textContent = '已复制验证码。';
+                if (current !== state || state.step !== step || timeStep(state.period) !== step) return;
+                clearCopyFeedback();
+                code.classList.add('copied');
+                copiedTimeout = setTimeout(clearCopyFeedback, 750);
+                status.textContent = '已复制验证码。';
             } catch {
-                if (current !== state || code.textContent !== value) return;
+                if (current !== state || state.step !== step || timeStep(state.period) !== step) return;
                 const selection = window.getSelection();
                 if (selection) {
                     const range = document.createRange();
