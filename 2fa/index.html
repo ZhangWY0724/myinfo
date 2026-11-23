@@ -5,125 +5,1149 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="referrer" content="no-referrer">
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; form-action 'none'; base-uri 'none'">
-    <title>2FA 验证码</title>
+    <title>2FA 验证码 · 本地安全令牌</title>
     <style>
-        * { box-sizing: border-box; }
+        :root {
+            --bg-base: #f1f5f9;
+            --bg-glow-1: rgba(14, 165, 233, 0.12);
+            --bg-glow-2: rgba(99, 102, 241, 0.1);
+            --bg-grid: rgba(15, 23, 42, 0.05);
+
+            --surface-card: rgba(255, 255, 255, 0.88);
+            --surface-card-border: rgba(15, 23, 42, 0.08);
+            --surface-card-highlight: rgba(255, 255, 255, 0.9);
+            --surface-inset: #f8fafc;
+            --surface-inset-border: rgba(15, 23, 42, 0.09);
+            --surface-hover: #e2e8f0;
+            --surface-pill: #eef2f7;
+
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #64748b;
+
+            --accent: #0284c7;
+            --accent-strong: #0369a1;
+            --accent-soft: rgba(2, 132, 199, 0.1);
+            --accent-glow: rgba(2, 132, 199, 0.22);
+
+            --state-safe: #059669;
+            --state-safe-soft: rgba(5, 150, 105, 0.11);
+            --state-warn: #d97706;
+            --state-warn-soft: rgba(217, 119, 6, 0.12);
+            --state-danger: #e11d48;
+            --state-danger-soft: rgba(225, 29, 72, 0.1);
+
+            --digit-bg: #ffffff;
+            --digit-border: rgba(15, 23, 42, 0.1);
+            --digit-color: #0f172a;
+            --digit-placeholder: #cbd5e1;
+
+            --ring-track: rgba(15, 23, 42, 0.1);
+            --shadow-card: 0 24px 60px -20px rgba(15, 23, 42, 0.14), 0 0 0 1px var(--surface-card-border);
+            --shadow-inset: inset 0 1px 4px rgba(15, 23, 42, 0.05);
+
+            --font-sans: 'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', ui-monospace, 'Cascadia Mono', 'Menlo', 'Consolas', monospace;
+            --radius-card: 1.5rem;
+            --radius-panel: 1rem;
+            --radius-control: 0.75rem;
+            --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        :root[data-theme="dark"] {
+            --bg-base: #070b14;
+            --bg-glow-1: rgba(56, 189, 248, 0.14);
+            --bg-glow-2: rgba(99, 102, 241, 0.16);
+            --bg-grid: rgba(148, 163, 184, 0.06);
+
+            --surface-card: rgba(15, 23, 42, 0.78);
+            --surface-card-border: rgba(148, 163, 184, 0.16);
+            --surface-card-highlight: rgba(255, 255, 255, 0.08);
+            --surface-inset: rgba(7, 11, 20, 0.68);
+            --surface-inset-border: rgba(148, 163, 184, 0.14);
+            --surface-hover: rgba(30, 41, 59, 0.72);
+            --surface-pill: rgba(30, 41, 59, 0.65);
+
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+
+            --accent: #38bdf8;
+            --accent-strong: #0ea5e9;
+            --accent-soft: rgba(56, 189, 248, 0.14);
+            --accent-glow: rgba(56, 189, 248, 0.35);
+
+            --state-safe: #34d399;
+            --state-safe-soft: rgba(52, 211, 153, 0.14);
+            --state-warn: #fbbf24;
+            --state-warn-soft: rgba(251, 191, 36, 0.16);
+            --state-danger: #fb7185;
+            --state-danger-soft: rgba(251, 113, 133, 0.14);
+
+            --digit-bg: rgba(15, 23, 42, 0.9);
+            --digit-border: rgba(148, 163, 184, 0.16);
+            --digit-color: #f8fafc;
+            --digit-placeholder: #475569;
+
+            --ring-track: rgba(148, 163, 184, 0.16);
+            --shadow-card: 0 24px 64px -16px rgba(0, 0, 0, 0.65), 0 0 0 1px var(--surface-card-border);
+            --shadow-inset: inset 0 2px 8px rgba(0, 0, 0, 0.35);
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        [hidden] {
+            display: none !important;
+        }
+
+        html {
+            color-scheme: light;
+        }
+
+        html[data-theme="dark"] {
+            color-scheme: dark;
+        }
+
         body {
             min-height: 100svh;
             margin: 0;
-            display: grid;
-            place-items: center;
-            padding: 1rem;
-            background: #f4f6fa;
-            color: #182338;
-            font: 1rem/1.6 system-ui, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: clamp(0.85rem, 4vw, 2rem);
+            background-color: var(--bg-base);
+            background-image:
+                radial-gradient(60rem 42rem at 15% 10%, var(--bg-glow-1), transparent 60%),
+                radial-gradient(54rem 38rem at 85% 90%, var(--bg-glow-2), transparent 60%),
+                radial-gradient(var(--bg-grid) 1px, transparent 1px);
+            background-size: 100% 100%, 100% 100%, 24px 24px;
+            color: var(--text-primary);
+            font: 400 0.9375rem/1.55 var(--font-sans);
+            -webkit-font-smoothing: antialiased;
+            transition: background-color 240ms ease, color 240ms ease;
         }
-        main {
-            width: min(100%, 28rem);
-            padding: clamp(1.25rem, 5vw, 2rem);
-            border: 1px solid #dae1ed;
-            border-radius: 1rem;
-            background: white;
-        }
-        h1 { margin: 0; font-size: 1.6rem; }
-        p { margin: 0.35rem 0 0; }
-        .hint { color: #505e74; font-size: 0.875rem; }
-        label { display: block; margin-top: 1.5rem; font-weight: 600; }
-        input, button { font: inherit; border-radius: 0.5rem; }
-        input {
+
+        .shell {
             width: 100%;
-            margin-top: 0.35rem;
-            padding: 0.65rem 0.75rem;
-            border: 1px solid #a6b2c5;
-            color: inherit;
+            max-width: 30rem;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.875rem;
         }
-        :focus-visible { outline: 2px solid #245cbb; outline-offset: 3px; }
-        .result {
+
+        /* 顶部导航栏 */
+        .topbar {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 0.5rem;
-            margin-top: 1rem;
-            padding: 0.85rem 1rem;
-            background: #f0f4fb;
-            border-radius: 0.65rem;
+            padding: 0 0.25rem;
         }
-        #code {
-            padding: 0.1rem 0;
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            padding: 0.35rem 0.65rem 0.35rem 0.5rem;
+            border-radius: 999px;
+            transition: color 180ms ease, background-color 180ms ease, transform 180ms var(--ease-out);
+        }
+
+        .back-link:hover {
+            color: var(--text-primary);
+            background: var(--surface-pill);
+            transform: translateX(-2px);
+        }
+
+        .icon-btn {
+            display: inline-grid;
+            place-items: center;
+            width: 2rem;
+            height: 2rem;
+            padding: 0;
+            border: 1px solid var(--surface-card-border);
+            border-radius: 999px;
+            background: var(--surface-card);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: color 180ms ease, background-color 180ms ease, border-color 180ms ease, transform 160ms var(--ease-out);
+        }
+
+        .icon-btn:hover {
+            color: var(--text-primary);
+            background: var(--surface-hover);
+            border-color: var(--accent-glow);
+        }
+
+        .icon-btn:active {
+            transform: scale(0.93);
+        }
+
+        #themeToggle .icon-sun {
+            display: none;
+        }
+
+        :root[data-theme="dark"] #themeToggle .icon-moon {
+            display: none;
+        }
+
+        :root[data-theme="dark"] #themeToggle .icon-sun {
+            display: block;
+        }
+
+        /* 主卡片 */
+        main {
+            position: relative;
+            width: 100%;
+            min-width: 0;
+            overflow: hidden;
+            padding: clamp(1.2rem, 4.5vw, 1.85rem);
+            border-radius: var(--radius-card);
+            background: var(--surface-card);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: var(--shadow-card);
+            transition: background-color 240ms ease, box-shadow 240ms ease;
+        }
+
+        main::before {
+            content: '';
+            position: absolute;
+            inset: 0 12% auto 12%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--surface-card-highlight), transparent);
+            pointer-events: none;
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+        }
+
+        .logo {
+            flex: 0 0 auto;
+            width: 2.35rem;
+            height: 2.35rem;
+            display: grid;
+            place-items: center;
+            border-radius: 0.78rem;
+            background: linear-gradient(135deg, var(--accent-soft), rgba(99, 102, 241, 0.14));
+            border: 1px solid var(--accent-glow);
+            color: var(--accent);
+            box-shadow: 0 6px 16px -6px var(--accent-glow);
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            line-height: 1.25;
+        }
+
+        /* 密钥输入区 */
+        .field-section {
+            margin-top: 1.35rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.8125rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            letter-spacing: 0.01em;
+        }
+
+        .input-group {
+            position: relative;
+            display: flex;
+            align-items: center;
+            border-radius: var(--radius-control);
+            background: var(--surface-inset);
+            border: 1px solid var(--surface-inset-border);
+            box-shadow: var(--shadow-inset);
+            transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+        }
+
+        .input-group:focus-within {
+            border-color: var(--accent);
+            box-shadow: var(--shadow-inset), 0 0 0 3px var(--accent-soft);
+        }
+
+        .input-group[data-state="valid"] {
+            border-color: rgba(52, 211, 153, 0.45);
+        }
+
+        .input-group[data-state="valid"]:focus-within {
+            border-color: var(--state-safe);
+            box-shadow: var(--shadow-inset), 0 0 0 3px var(--state-safe-soft);
+        }
+
+        .input-group[data-state="invalid"] {
+            border-color: rgba(251, 113, 133, 0.6);
+            box-shadow: var(--shadow-inset), 0 0 0 3px var(--state-danger-soft);
+        }
+
+        .input-group.shake {
+            animation: shake 280ms ease;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-4px); }
+            50% { transform: translateX(4px); }
+            75% { transform: translateX(-2px); }
+        }
+
+        .input-leading {
+            display: grid;
+            place-items: center;
+            padding-left: 0.8rem;
+            color: var(--text-muted);
+            pointer-events: none;
+            flex-shrink: 0;
+        }
+
+        #secret {
+            flex: 1 1 auto;
+            width: 100%;
+            min-width: 0;
             border: 0;
             background: transparent;
-            color: #204fa0;
-            font: 700 clamp(1.25rem, 6vw, 2.2rem)/1.4 ui-monospace, monospace;
-            letter-spacing: 0.06em;
-            cursor: copy;
-            transition: transform 120ms ease, color 120ms ease, background-color 120ms ease;
+            padding: 0.78rem 0.55rem;
+            color: var(--text-primary);
+            font: 500 0.875rem/1.4 var(--font-mono);
+            outline: none;
         }
-        #code:enabled:hover { color: #163877; }
-        #code:enabled:active { transform: scale(0.94); }
-        #code.copied:enabled { color: #17643c; background: #dff3e8; }
-        #code:disabled { color: #505e74; cursor: default; }
-        @media (prefers-reduced-motion: reduce) {
-            #code { transition: none; }
-            #code:enabled:active { transform: none; background: #d9e1ee; }
+
+        #secret::placeholder {
+            font-family: var(--font-sans);
+            font-weight: 400;
+            color: var(--text-muted);
         }
-        .timer {
-            --progress: 0%;
-            display: grid;
+
+        .input-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.15rem;
+            padding-right: 0.4rem;
+            flex-shrink: 0;
+        }
+
+        .field-action {
+            display: inline-grid;
             place-items: center;
-            flex: 0 0 3.25rem;
-            aspect-ratio: 1;
-            border-radius: 50%;
-            background: conic-gradient(#204fa0 var(--progress), #d9e1ee 0);
+            width: 1.9rem;
+            height: 1.9rem;
+            padding: 0;
+            border: 0;
+            border-radius: 0.5rem;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: color 150ms ease, background-color 150ms ease, transform 140ms ease;
         }
-        #remaining {
-            display: grid;
-            place-items: center;
-            width: calc(100% - 0.4rem);
-            aspect-ratio: 1;
-            border-radius: 50%;
-            background: #f0f4fb;
-            color: #505e74;
-            font: 600 0.8rem/1 system-ui, sans-serif;
+
+        .field-action:hover {
+            color: var(--text-primary);
+            background: var(--surface-pill);
+        }
+
+        .field-action:active {
+            transform: scale(0.92);
+        }
+
+        .field-action[hidden] {
+            display: none;
+        }
+
+        #toggleVisBtn .icon-eye-off {
+            display: none;
+        }
+
+        #toggleVisBtn[aria-pressed="true"] .icon-eye {
+            display: none;
+        }
+
+        #toggleVisBtn[aria-pressed="true"] .icon-eye-off {
+            display: block;
+        }
+
+        /* 识别到的令牌元数据条 */
+        .meta-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.45rem;
+            margin-top: 0.75rem;
+            min-height: 1.65rem;
+            opacity: 0;
+            transform: translateY(-4px);
+            transition: opacity 220ms var(--ease-out), transform 220ms var(--ease-out);
+            pointer-events: none;
+        }
+
+        .meta-bar.visible {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+
+        .meta-account {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            max-width: 100%;
+            overflow: hidden;
+        }
+
+        .meta-account-text {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .meta-tags {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            flex-wrap: wrap;
+        }
+
+        .meta-tag {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.16rem 0.5rem;
+            border-radius: 0.4rem;
+            background: var(--surface-pill);
+            border: 1px solid var(--surface-card-border);
+            color: var(--text-secondary);
+            font: 600 0.7rem/1.3 var(--font-mono);
+            letter-spacing: 0.02em;
+        }
+
+        /* 核心验证码表盘区 */
+        .vault-display {
+            --phase-color: var(--accent);
+            --phase-soft: var(--accent-soft);
+            position: relative;
+            overflow: hidden;
+            margin-top: 0.75rem;
+            padding: 1.2rem 1.15rem 1.35rem;
+            border-radius: var(--radius-panel);
+            background: var(--surface-inset);
+            border: 1px solid var(--surface-inset-border);
+            box-shadow: var(--shadow-inset);
+            transition: border-color 220ms ease, background-color 220ms ease;
+        }
+
+        .vault-display[data-phase="warn"] {
+            --phase-color: var(--state-warn);
+            --phase-soft: var(--state-warn-soft);
+        }
+
+        .vault-display[data-phase="urgent"] {
+            --phase-color: var(--state-danger);
+            --phase-soft: var(--state-danger-soft);
+            border-color: rgba(251, 113, 133, 0.32);
+        }
+
+        .vault-display.is-copied {
+            --phase-color: var(--state-safe);
+            --phase-soft: var(--state-safe-soft);
+            border-color: rgba(52, 211, 153, 0.5);
+        }
+
+        .vault-main {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.9rem;
+        }
+
+        #code {
+            flex: 1 1 auto;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.45rem;
+            padding: 0.35rem 0.45rem;
+            margin: -0.35rem -0.45rem;
+            border: 0;
+            border-radius: 0.75rem;
+            background: transparent;
+            color: inherit;
+            text-align: left;
+            cursor: pointer;
+            transition: background-color 180ms ease, transform 140ms var(--ease-out);
+        }
+
+        #code:enabled:hover {
+            background: var(--phase-soft);
+        }
+
+        #code:enabled:active {
+            transform: scale(0.985);
+        }
+
+        #code:disabled {
+            cursor: default;
+        }
+
+        .code-digits {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.65rem;
+            font-family: var(--font-mono);
             font-variant-numeric: tabular-nums;
+            line-height: 1;
         }
-        #status { min-height: 1.6em; }
+
+        .code-group {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.28rem;
+        }
+
+        .digit-slot {
+            display: inline-grid;
+            place-items: center;
+            width: clamp(1.85rem, 6.2vw, 2.25rem);
+            height: clamp(2.55rem, 8.2vw, 3rem);
+            border-radius: 0.55rem;
+            background: var(--digit-bg);
+            border: 1px solid var(--digit-border);
+            color: var(--digit-color);
+            font-size: clamp(1.35rem, 5.2vw, 1.8rem);
+            font-weight: 700;
+            letter-spacing: 0;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.14);
+            transition: border-color 180ms ease, color 180ms ease, transform 180ms var(--ease-out), background-color 180ms ease;
+        }
+
+        .vault-display[data-digits="8"] .digit-slot {
+            width: clamp(1.42rem, 4.7vw, 1.72rem);
+            height: clamp(2.25rem, 7.2vw, 2.65rem);
+            font-size: clamp(1.1rem, 4.1vw, 1.45rem);
+        }
+
+        .vault-display[data-digits="8"] .code-digits {
+            gap: 0.45rem;
+        }
+
+        .vault-display[data-digits="8"] .code-group {
+            gap: 0.2rem;
+        }
+
+        #code:disabled .digit-slot {
+            color: var(--digit-placeholder);
+            box-shadow: none;
+        }
+
+        #code:enabled:hover .digit-slot {
+            border-color: var(--phase-color);
+        }
+
+        .vault-display.is-copied .digit-slot {
+            color: var(--state-safe);
+            border-color: rgba(52, 211, 153, 0.55);
+            background: var(--state-safe-soft);
+        }
+
+        .digit-slot.pop {
+            animation: digit-pop 340ms var(--ease-out) both;
+            animation-delay: calc(var(--i, 0) * 26ms);
+        }
+
+        @keyframes digit-pop {
+            0% {
+                opacity: 0.35;
+                transform: translateY(5px) scale(0.94);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .code-caption {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.38rem;
+            font-size: 0.76rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            transition: color 180ms ease;
+        }
+
+        #code:enabled:hover .code-caption {
+            color: var(--phase-color);
+        }
+
+        .vault-display.is-copied .code-caption {
+            color: var(--state-safe);
+        }
+
+        .copy-icon-done {
+            display: none;
+        }
+
+        .vault-display.is-copied .copy-icon-idle {
+            display: none;
+        }
+
+        .vault-display.is-copied .copy-icon-done {
+            display: inline-block;
+        }
+
+        /* 环形高精度倒计时 */
+        .timer-wrap {
+            position: relative;
+            flex: 0 0 3.75rem;
+            width: 3.75rem;
+            height: 3.75rem;
+            display: grid;
+            place-items: center;
+        }
+
+        .timer-svg {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+            overflow: visible;
+        }
+
+        .timer-track {
+            fill: none;
+            stroke: var(--ring-track);
+            stroke-width: 4;
+        }
+
+        .timer-arc {
+            fill: none;
+            stroke: var(--phase-color);
+            stroke-width: 4;
+            stroke-linecap: round;
+            stroke-dasharray: 150.796;
+            stroke-dashoffset: 150.796;
+            transition: stroke 260ms ease;
+            filter: drop-shadow(0 0 4px var(--phase-soft));
+        }
+
+        #remaining {
+            position: absolute;
+            display: flex;
+            align-items: baseline;
+            justify-content: center;
+            gap: 1px;
+            color: var(--text-primary);
+            font: 700 0.92rem/1 var(--font-mono);
+            font-variant-numeric: tabular-nums;
+            transition: color 240ms ease;
+        }
+
+        .vault-display[data-phase="urgent"] #remaining {
+            color: var(--state-danger);
+        }
+
+        .vault-display[data-phase="idle"] #remaining {
+            color: var(--text-muted);
+        }
+
+        .timer-unit {
+            font-size: 0.65rem;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        /* 下一组验证码预览行 */
+        .vault-subbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin-top: 0.9rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid var(--surface-inset-border);
+            font-size: 0.76rem;
+            color: var(--text-muted);
+        }
+
+        .next-preview {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            transition: color 220ms ease;
+        }
+
+        .vault-display[data-phase="urgent"] .next-preview {
+            color: var(--text-primary);
+        }
+
+        .next-code {
+            font-family: var(--font-mono);
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            font-variant-numeric: tabular-nums;
+            color: var(--text-secondary);
+            padding: 0.12rem 0.42rem;
+            border-radius: 0.35rem;
+            background: var(--surface-pill);
+            transition: color 220ms ease, background-color 220ms ease;
+        }
+
+        .vault-display[data-phase="urgent"] .next-code {
+            color: var(--accent);
+            background: var(--accent-soft);
+        }
+
+        .kbd-hint {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            color: var(--text-muted);
+            font-size: 0.72rem;
+        }
+
+        kbd {
+            display: inline-block;
+            padding: 0.1rem 0.34rem;
+            border-radius: 0.3rem;
+            border: 1px solid var(--surface-card-border);
+            background: var(--surface-pill);
+            color: var(--text-secondary);
+            font: 600 0.68rem/1.2 var(--font-mono);
+        }
+
+        /* 底部细进度流光条 */
+        .progress-bar {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 3px;
+            background: var(--ring-track);
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--phase-color);
+            box-shadow: 0 0 10px var(--phase-color);
+            transform-origin: left center;
+            transition: background-color 260ms ease;
+        }
+
+        /* 状态反馈行 */
+        .status-row {
+            margin-top: 0.7rem;
+            min-height: 1.4rem;
+            display: flex;
+            align-items: center;
+        }
+
+        #status {
+            margin: 0;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            transition: color 180ms ease;
+        }
+
+        #status[data-tone="success"] {
+            color: var(--state-safe);
+        }
+
+        #status[data-tone="error"] {
+            color: var(--state-danger);
+        }
+
+        #status[data-tone="info"] {
+            color: var(--accent);
+        }
+
+        /* 底部安全特性说明 */
+        .trust-footer {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 0.5rem 1.1rem;
+            padding: 0.15rem 0.5rem;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+        }
+
+        .trust-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .trust-item svg {
+            color: var(--text-secondary);
+            opacity: 0.85;
+        }
+
+        :focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
+        #secret:focus-visible {
+            outline: none;
+        }
+
+        @media (max-width: 440px) {
+            main {
+                padding: 1.15rem;
+            }
+            .vault-display {
+                padding: 1rem 0.9rem 1.15rem;
+            }
+            .vault-main {
+                gap: 0.55rem;
+            }
+            .code-digits {
+                gap: 0.45rem;
+            }
+            .code-group {
+                gap: 0.2rem;
+            }
+            .digit-slot {
+                width: clamp(1.65rem, 6.8vw, 2rem);
+                height: clamp(2.35rem, 8.8vw, 2.75rem);
+                font-size: clamp(1.2rem, 5.2vw, 1.55rem);
+            }
+            .vault-display[data-digits="8"] .code-digits {
+                gap: 0.32rem;
+            }
+            .vault-display[data-digits="8"] .code-group {
+                gap: 0.14rem;
+            }
+            .vault-display[data-digits="8"] .digit-slot {
+                width: clamp(1.22rem, 4.9vw, 1.5rem);
+                height: clamp(2.05rem, 7.2vw, 2.4rem);
+                font-size: clamp(0.98rem, 4vw, 1.25rem);
+            }
+            .timer-wrap {
+                flex-basis: 3.1rem;
+                width: 3.1rem;
+                height: 3.1rem;
+            }
+            .kbd-hint {
+                display: none;
+            }
+            .trust-footer {
+                gap: 0.4rem 0.8rem;
+                font-size: 0.72rem;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
     </style>
 </head>
 <body>
-    <main>
-        <h1>2FA 验证码</h1>
-        <p class="hint">在浏览器本地生成，密钥不上传、不保存。</p>
+    <div class="shell">
+        <nav class="topbar" aria-label="页面导航与设置">
+            <a class="back-link" href="../index.html">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M19 12H5"></path>
+                    <path d="m12 19-7-7 7-7"></path>
+                </svg>
+                <span>返回主页</span>
+            </a>
+            <button id="themeToggle" class="icon-btn" type="button" title="切换深色/浅色外观" aria-label="切换深色外观">
+                <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="12" cy="12" r="4"></circle>
+                    <path d="M12 2v2"></path>
+                    <path d="M12 20v2"></path>
+                    <path d="m4.93 4.93 1.41 1.41"></path>
+                    <path d="m17.66 17.66 1.41 1.41"></path>
+                    <path d="M2 12h2"></path>
+                    <path d="M20 12h2"></path>
+                    <path d="m6.34 17.66-1.41 1.41"></path>
+                    <path d="m19.07 4.93-1.41 1.41"></path>
+                </svg>
+                <svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+                </svg>
+            </button>
+        </nav>
 
-        <label for="secret">2FA 密钥</label>
-        <input id="secret" type="password" placeholder="粘贴 Base32 密钥或 otpauth 链接"
-            autocomplete="off" spellcheck="false" autocapitalize="off">
-        <div class="result">
-            <button id="code" type="button" title="点击验证码复制" aria-label="等待生成验证码" disabled>—</button>
-            <div id="timer" class="timer"><span id="remaining" role="timer">—</span></div>
-        </div>
-        <p id="status" class="hint" role="status"></p>
-    </main>
+        <main>
+            <header class="header">
+                <div class="logo" aria-hidden="true">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"></path>
+                        <path d="m9 12 2 2 4-4"></path>
+                    </svg>
+                </div>
+                <h1>2FA 动态验证码</h1>
+            </header>
+
+            <section class="field-section" aria-label="密钥输入">
+                <label for="secret">密钥或 otpauth 链接</label>
+                <div id="inputGroup" class="input-group" data-state="idle">
+                    <span class="input-leading" aria-hidden="true">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="7.5" cy="15.5" r="5.5"></circle>
+                            <path d="m21 2-9.6 9.6"></path>
+                            <path d="m15.5 7.5 3 3L22 7l-3-3"></path>
+                        </svg>
+                    </span>
+                    <input id="secret" type="password" placeholder="粘贴 Base32 密钥或 otpauth://totp/... 链接"
+                        autocomplete="off" spellcheck="false" autocapitalize="off">
+                    <div class="input-actions">
+                        <button id="pasteBtn" class="field-action" type="button" title="从剪贴板粘贴" aria-label="从剪贴板粘贴密钥">
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <rect width="8" height="4" x="8" y="2" rx="1" ry="1"></rect>
+                                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                            </svg>
+                        </button>
+                        <button id="toggleVisBtn" class="field-action" type="button" title="显示密钥" aria-label="显示密钥" aria-pressed="false">
+                            <svg class="icon-eye" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                            <svg class="icon-eye-off" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"></path>
+                                <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"></path>
+                                <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"></path>
+                                <line x1="2" x2="22" y1="2" y2="22"></line>
+                            </svg>
+                        </button>
+                        <button id="clearBtn" class="field-action" type="button" title="清空密钥" aria-label="清空密钥" hidden>
+                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M18 6 6 18"></path>
+                                <path d="m6 6 12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="metaBar" class="meta-bar" aria-live="polite">
+                    <div class="meta-account">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                        <span id="metaAccountText" class="meta-account-text">TOTP 令牌</span>
+                    </div>
+                    <div class="meta-tags">
+                        <span id="metaAlgo" class="meta-tag">SHA-1</span>
+                        <span id="metaDigits" class="meta-tag">6 位</span>
+                        <span id="metaPeriod" class="meta-tag">30s</span>
+                    </div>
+                </div>
+            </section>
+
+            <section id="vaultDisplay" class="vault-display" data-phase="idle" data-digits="6" aria-label="验证码显示区">
+                <div class="vault-main">
+                    <button id="code" type="button" title="点击复制验证码" aria-label="等待生成验证码" disabled>
+                        <span id="codeDigits" class="code-digits" aria-hidden="true">
+                            <span class="code-group">
+                                <span class="digit-slot">•</span>
+                                <span class="digit-slot">•</span>
+                                <span class="digit-slot">•</span>
+                            </span>
+                            <span class="code-group">
+                                <span class="digit-slot">•</span>
+                                <span class="digit-slot">•</span>
+                                <span class="digit-slot">•</span>
+                            </span>
+                        </span>
+                        <span class="code-caption">
+                            <svg class="copy-icon-idle" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect>
+                                <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+                            </svg>
+                            <svg class="copy-icon-done" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M20 6 9 17l-5-5"></path>
+                            </svg>
+                            <span id="copyCaptionText">输入有效密钥后自动生成</span>
+                        </span>
+                    </button>
+
+                    <div id="timer" class="timer-wrap" aria-label="剩余有效时间">
+                        <svg class="timer-svg" viewBox="0 0 56 56" aria-hidden="true">
+                            <circle class="timer-track" cx="28" cy="28" r="24"></circle>
+                            <circle id="timerArc" class="timer-arc" cx="28" cy="28" r="24"></circle>
+                        </svg>
+                        <span id="remaining" role="timer">—</span>
+                    </div>
+                </div>
+
+                <div class="vault-subbar">
+                    <div class="next-preview">
+                        <span>下一组</span>
+                        <span id="nextCode" class="next-code">••• •••</span>
+                    </div>
+                    <div class="kbd-hint" aria-hidden="true">
+                        <span>快速复制</span>
+                        <kbd id="copyShortcut">Ctrl+C</kbd>
+                    </div>
+                </div>
+
+                <div class="progress-bar" aria-hidden="true">
+                    <div id="progressFill" class="progress-fill"></div>
+                </div>
+            </section>
+
+            <div class="status-row">
+                <p id="status" role="status" aria-live="polite"></p>
+            </div>
+        </main>
+
+        <footer class="trust-footer" aria-label="安全特性说明">
+            <span class="trust-item">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"></path>
+                </svg>
+                严格 CSP 零外联
+            </span>
+            <span class="trust-item">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+                Web Crypto 运算
+            </span>
+            <span class="trust-item">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M3 6h18"></path>
+                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                </svg>
+                关闭即焚无缓存
+            </span>
+        </footer>
+    </div>
 
     <script>
         'use strict';
 
         const input = document.querySelector('#secret');
+        const inputGroup = document.querySelector('#inputGroup');
+        const pasteBtn = document.querySelector('#pasteBtn');
+        const toggleVisBtn = document.querySelector('#toggleVisBtn');
+        const clearBtn = document.querySelector('#clearBtn');
+
+        const metaBar = document.querySelector('#metaBar');
+        const metaAccountText = document.querySelector('#metaAccountText');
+        const metaAlgo = document.querySelector('#metaAlgo');
+        const metaDigits = document.querySelector('#metaDigits');
+        const metaPeriod = document.querySelector('#metaPeriod');
+
+        const vaultDisplay = document.querySelector('#vaultDisplay');
         const code = document.querySelector('#code');
-        const timer = document.querySelector('#timer');
+        const codeDigits = document.querySelector('#codeDigits');
+        const copyCaptionText = document.querySelector('#copyCaptionText');
+        const timerArc = document.querySelector('#timerArc');
         const remaining = document.querySelector('#remaining');
+        const nextCodeEl = document.querySelector('#nextCode');
+        const progressFill = document.querySelector('#progressFill');
         const status = document.querySelector('#status');
+        const copyShortcut = document.querySelector('#copyShortcut');
+
+        const themeToggle = document.querySelector('#themeToggle');
+
+        const RING_CIRCUMFERENCE = 2 * Math.PI * 24;
         const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
         const hashes = new Map([['SHA1', 'SHA-1'], ['SHA256', 'SHA-256'], ['SHA512', 'SHA-512']]);
+
         let current = null;
-        let copiedTimeout;
+        let copiedTimeout = null;
+        let statusTimeout = null;
+        let rafId = null;
+        let lastDisplayedSecond = null;
+
+        if (/Mac|iPhone|iPad|iPod/i.test(navigator.platform || navigator.userAgent)) {
+            copyShortcut.textContent = '⌘C';
+        }
+
+        function setStatus(message, tone = 'neutral', autoClearMs = 0) {
+            clearTimeout(statusTimeout);
+            status.textContent = message;
+            if (tone === 'neutral') {
+                status.removeAttribute('data-tone');
+            } else {
+                status.dataset.tone = tone;
+            }
+            if (autoClearMs > 0 && message) {
+                statusTimeout = setTimeout(() => {
+                    if (status.textContent === message) {
+                        status.textContent = '';
+                        status.removeAttribute('data-tone');
+                    }
+                }, autoClearMs);
+            }
+        }
 
         function clearCopyFeedback() {
             clearTimeout(copiedTimeout);
-            code.classList.remove('copied');
+            vaultDisplay.classList.remove('is-copied');
+            if (current && !code.disabled) {
+                copyCaptionText.textContent = '点击验证码即可复制';
+            }
+        }
+
+        function formatGroupedPreview(value, digits) {
+            const half = digits / 2;
+            return value.slice(0, half) + ' ' + value.slice(half);
+        }
+
+        function renderDigits(value, digits, animate = false) {
+            vaultDisplay.dataset.digits = String(digits);
+            const chars = value ? value.split('') : Array(digits).fill('•');
+            const half = digits / 2;
+            const fragment = document.createDocumentFragment();
+
+            for (let g = 0; g < 2; g++) {
+                const group = document.createElement('span');
+                group.className = 'code-group';
+                const start = g * half;
+                for (let i = 0; i < half; i++) {
+                    const idx = start + i;
+                    const slot = document.createElement('span');
+                    slot.className = animate ? 'digit-slot pop' : 'digit-slot';
+                    if (animate) slot.style.setProperty('--i', String(idx));
+                    slot.textContent = chars[idx] ?? '•';
+                    group.appendChild(slot);
+                }
+                fragment.appendChild(group);
+            }
+
+            codeDigits.replaceChildren(fragment);
+            code.dataset.rawCode = value ?? '';
         }
 
         function decodeBase32(value) {
-            const normalized = value.replace(/\s/g, '').toUpperCase();
+            const normalized = value.replace(/[\s-]/g, '').toUpperCase();
             const match = /^([A-Z2-7]+)(=*)$/.exec(normalized);
             const padding = match && new Map([[0, 0], [2, 6], [4, 4], [5, 3], [7, 1]]).get(match[1].length % 8);
             if (!match || padding === undefined || (match[2] && match[2].length !== padding)) {
@@ -148,20 +1172,47 @@
 
         function parseSecret(value) {
             let params = new URLSearchParams();
+            let issuer = '';
+            let account = '';
+
             if (/^otpauth:/i.test(value)) {
                 if (!/^otpauth:\/\/totp\//i.test(value)) {
                     throw new Error('请输入 otpauth://totp/ 格式的链接。');
                 }
-                params = new URL(value).searchParams;
+                let url;
+                try {
+                    url = new URL(value);
+                } catch {
+                    throw new Error('otpauth 链接格式无效，请检查后重试。');
+                }
+                params = url.searchParams;
+                const labelMatch = /^otpauth:\/\/totp\/([^?]*)/i.exec(value);
+                let rawLabel = labelMatch ? labelMatch[1] : '';
+                try {
+                    rawLabel = decodeURIComponent(rawLabel);
+                } catch {
+                    // 保留原始文本
+                }
+                rawLabel = rawLabel.replace(/^\/+/, '').trim();
+                if (rawLabel.includes(':')) {
+                    const colonIdx = rawLabel.indexOf(':');
+                    issuer = rawLabel.slice(0, colonIdx).trim();
+                    account = rawLabel.slice(colonIdx + 1).trim();
+                } else {
+                    account = rawLabel;
+                }
+                const paramIssuer = (params.get('issuer') ?? '').trim();
+                if (paramIssuer) issuer = paramIssuer;
                 value = params.get('secret') ?? '';
             }
+
             const hash = hashes.get((params.get('algorithm') ?? 'SHA1').toUpperCase());
             const digits = Number(params.get('digits') ?? '6');
             const period = Number(params.get('period') ?? '30');
             if (!hash || ![6, 8].includes(digits) || !Number.isSafeInteger(period) || period < 1) {
                 throw new Error('链接中的算法、位数或刷新周期无效。');
             }
-            return { bytes: decodeBase32(value), hash, digits, period };
+            return { bytes: decodeBase32(value), hash, digits, period, issuer, account };
         }
 
         async function generate(key, counter, digits) {
@@ -177,61 +1228,156 @@
             return Math.floor(Date.now() / 1000 / period);
         }
 
+        function updateTimerVisual(left, period) {
+            const ratio = Math.max(0, Math.min(1, left / period));
+            const offset = RING_CIRCUMFERENCE * (1 - ratio);
+            timerArc.style.strokeDashoffset = offset.toFixed(2);
+            progressFill.style.width = (ratio * 100).toFixed(2) + '%';
+
+            const secs = Math.ceil(left);
+            if (secs !== lastDisplayedSecond) {
+                lastDisplayedSecond = secs;
+                remaining.innerHTML = secs + '<span class="timer-unit">s</span>';
+            }
+
+            const urgentThreshold = Math.min(5, Math.max(2, Math.floor(period * 0.2)));
+            const warnThreshold = Math.min(10, Math.max(4, Math.floor(period * 0.35)));
+            if (left <= urgentThreshold) {
+                vaultDisplay.dataset.phase = 'urgent';
+            } else if (left <= warnThreshold) {
+                vaultDisplay.dataset.phase = 'warn';
+            } else {
+                vaultDisplay.dataset.phase = 'active';
+            }
+        }
+
+        function stopTicker() {
+            if (rafId !== null) {
+                cancelAnimationFrame(rafId);
+                rafId = null;
+            }
+        }
+
+        function startTicker() {
+            stopTicker();
+            if (!current || document.hidden) return;
+            const loop = () => {
+                if (!current || document.hidden) {
+                    rafId = null;
+                    return;
+                }
+                void refresh();
+                rafId = requestAnimationFrame(loop);
+            };
+            rafId = requestAnimationFrame(loop);
+        }
+
         async function refresh() {
             const state = current;
             if (!state) return;
 
             const seconds = Date.now() / 1000;
             const step = Math.floor(seconds / state.period);
-            const left = state.period - seconds % state.period;
-            remaining.textContent = Math.ceil(left) + ' 秒';
-            timer.style.setProperty('--progress', (left / state.period * 100) + '%');
+            const left = state.period - (seconds % state.period);
+            updateTimerVisual(left, state.period);
+
             if (state.step === step) return;
 
             state.step = step;
             clearCopyFeedback();
-            code.textContent = '—';
             code.disabled = true;
-            code.setAttribute('aria-label', '等待生成验证码');
-            status.textContent = '';
+            code.setAttribute('aria-label', '正在生成验证码');
+
             try {
-                const value = await generate(await state.key, step, state.digits);
+                const cryptoKey = await state.key;
+                const [value, nextValue] = await Promise.all([
+                    generate(cryptoKey, step, state.digits),
+                    generate(cryptoKey, step + 1, state.digits)
+                ]);
                 if (current !== state || timeStep(state.period) !== step) return;
-                code.textContent = value;
+                renderDigits(value, state.digits, true);
+                nextCodeEl.textContent = formatGroupedPreview(nextValue, state.digits);
                 code.setAttribute('aria-label', '复制验证码 ' + value);
+                copyCaptionText.textContent = '点击验证码即可复制';
                 code.disabled = false;
             } catch {
-                if (current === state) status.textContent = '无法生成验证码，请确认浏览器支持 Web Crypto。';
+                if (current === state) {
+                    renderDigits(null, state.digits, false);
+                    nextCodeEl.textContent = state.digits === 8 ? '•••• ••••' : '••• •••';
+                    setStatus('无法生成验证码，请确认浏览器支持 Web Crypto。', 'error');
+                }
             }
+        }
+
+        function resetDisplay() {
+            stopTicker();
+            current = null;
+            lastDisplayedSecond = null;
+            clearCopyFeedback();
+            renderDigits(null, 6, false);
+            code.disabled = true;
+            code.setAttribute('aria-label', '等待生成验证码');
+            copyCaptionText.textContent = '输入有效密钥后自动生成';
+            vaultDisplay.dataset.phase = 'idle';
+            remaining.textContent = '—';
+            timerArc.style.strokeDashoffset = String(RING_CIRCUMFERENCE);
+            progressFill.style.width = '0%';
+            nextCodeEl.textContent = '••• •••';
+            metaBar.classList.remove('visible');
+        }
+
+        function triggerInvalidShake() {
+            inputGroup.classList.remove('shake');
+            void inputGroup.offsetWidth;
+            inputGroup.classList.add('shake');
         }
 
         function update() {
-            current = null;
-            clearCopyFeedback();
-            code.textContent = '—';
-            code.disabled = true;
-            code.setAttribute('aria-label', '等待生成验证码');
-            status.textContent = '';
-            remaining.textContent = '—';
-            timer.style.removeProperty('--progress');
-            const value = input.value.trim();
-            if (!value) return;
-            if (!globalThis.crypto?.subtle) {
-                status.textContent = '请通过 HTTPS 或 localhost 打开此页面。';
+            resetDisplay();
+            setStatus('');
+            const raw = input.value;
+            clearBtn.hidden = raw.length === 0;
+            const value = raw.trim();
+
+            if (!value) {
+                inputGroup.dataset.state = 'idle';
                 return;
             }
+
+            if (!globalThis.crypto?.subtle) {
+                inputGroup.dataset.state = 'invalid';
+                setStatus('请通过 HTTPS 或 localhost 打开此页面。', 'error');
+                return;
+            }
+
             try {
-                const { bytes, hash, digits, period } = parseSecret(value);
+                const { bytes, hash, digits, period, issuer, account } = parseSecret(value);
                 const key = crypto.subtle.importKey('raw', bytes, { name: 'HMAC', hash }, false, ['sign']);
                 current = { key, digits, period, step: null };
+                inputGroup.dataset.state = 'valid';
+
+                const labelText = issuer && account
+                    ? `${issuer} · ${account}`
+                    : (issuer || account || '自定义 Base32 密钥');
+                metaAccountText.textContent = labelText;
+                metaAlgo.textContent = hash;
+                metaDigits.textContent = digits + ' 位';
+                metaPeriod.textContent = period + 's';
+                metaBar.classList.add('visible');
+
+                renderDigits(null, digits, false);
+                nextCodeEl.textContent = digits === 8 ? '•••• ••••' : '••• •••';
+
                 void refresh();
+                startTicker();
             } catch (error) {
-                status.textContent = error.message;
+                inputGroup.dataset.state = 'invalid';
+                setStatus(error.message, 'error');
+                triggerInvalidShake();
             }
         }
 
-        input.addEventListener('input', update);
-        code.addEventListener('click', async () => {
+        async function copyCurrentCode() {
             const state = current;
             if (!state || code.disabled) return;
             const step = state.step;
@@ -239,24 +1385,97 @@
                 void refresh();
                 return;
             }
-            const value = code.textContent;
+            const value = code.dataset.rawCode;
+            if (!value) return;
+
             try {
                 await navigator.clipboard.writeText(value);
                 if (current !== state || state.step !== step || timeStep(state.period) !== step) return;
                 clearCopyFeedback();
-                code.classList.add('copied');
-                copiedTimeout = setTimeout(clearCopyFeedback, 750);
-                status.textContent = '已复制验证码。';
+                vaultDisplay.classList.add('is-copied');
+                copyCaptionText.textContent = '已复制到剪贴板';
+                copiedTimeout = setTimeout(clearCopyFeedback, 1200);
+                setStatus('验证码 ' + formatGroupedPreview(value, state.digits) + ' 已复制到剪贴板。', 'success', 2600);
             } catch {
                 if (current !== state || state.step !== step || timeStep(state.period) !== step) return;
                 const selection = window.getSelection();
                 if (selection) {
                     const range = document.createRange();
-                    range.selectNodeContents(code);
+                    range.selectNodeContents(codeDigits);
                     selection.removeAllRanges();
                     selection.addRange(range);
                 }
-                status.textContent = '无法自动复制，请手动复制验证码。';
+                setStatus('无法自动复制，已为您选中验证码，请手动复制。', 'info', 3500);
+            }
+        }
+
+        input.addEventListener('input', update);
+        code.addEventListener('click', copyCurrentCode);
+
+        toggleVisBtn.addEventListener('click', () => {
+            const isHidden = input.type === 'password';
+            input.type = isHidden ? 'text' : 'password';
+            toggleVisBtn.setAttribute('aria-pressed', String(isHidden));
+            toggleVisBtn.title = isHidden ? '隐藏密钥' : '显示密钥';
+            toggleVisBtn.setAttribute('aria-label', isHidden ? '隐藏密钥' : '显示密钥');
+            input.focus();
+        });
+
+        clearBtn.addEventListener('click', () => {
+            input.value = '';
+            update();
+            input.focus();
+        });
+
+        pasteBtn.addEventListener('click', async () => {
+            if (!navigator.clipboard?.readText) {
+                input.focus();
+                setStatus('当前浏览器不支持快捷粘贴，请按 Ctrl+V / ⌘V 粘贴。', 'info', 2800);
+                return;
+            }
+            try {
+                const text = await navigator.clipboard.readText();
+                if (!text.trim()) {
+                    setStatus('剪贴板为空。', 'info', 2200);
+                    return;
+                }
+                input.value = text.trim();
+                update();
+            } catch {
+                input.focus();
+                setStatus('剪贴板访问受限，请直接按 Ctrl+V / ⌘V 粘贴。', 'info', 2800);
+            }
+        });
+
+        themeToggle.addEventListener('click', () => {
+            const isDark = document.documentElement.dataset.theme === 'dark';
+            if (isDark) {
+                delete document.documentElement.dataset.theme;
+                themeToggle.setAttribute('aria-label', '切换深色外观');
+            } else {
+                document.documentElement.dataset.theme = 'dark';
+                themeToggle.setAttribute('aria-label', '切换浅色外观');
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            const isCopyShortcut = (event.ctrlKey || event.metaKey) && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'c';
+            if (!isCopyShortcut) return;
+            if (document.activeElement === input) return;
+            const selected = window.getSelection()?.toString();
+            if (selected) return;
+            if (current && !code.disabled) {
+                event.preventDefault();
+                void copyCurrentCode();
+            }
+        });
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                stopTicker();
+            } else if (current) {
+                void refresh();
+                startTicker();
             }
         });
 
@@ -267,8 +1486,6 @@
             input.value = prefill;
         }
         update();
-        setInterval(refresh, 250);
-        document.addEventListener('visibilitychange', refresh);
     </script>
 </body>
 </html>
